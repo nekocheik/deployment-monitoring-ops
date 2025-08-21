@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'deployment-api'
+    static_configs:
+      - targets: ['51.159.99.160:3004']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    scheme: http
+
+  - job_name: 'port-manager'
+    static_configs:
+      - targets: ['51.159.99.160:3005']
+    scrape_interval: 30s
+    metrics_path: '/metrics'  
+    scheme: http
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['51.159.99.160:9100']
+    scrape_interval: 30s

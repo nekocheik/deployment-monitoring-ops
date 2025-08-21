@@ -1,0 +1,28 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: https://metrics-deployment-monitoring.silverhawk77.click
+    isDefault: true
+    editable: true
+    basicAuth: false
+    jsonData:
+      httpMethod: GET
+      scrapeInterval: 15s
+      queryTimeout: 60s
+      timeInterval: 15s
+  
+  - name: Deployment Metrics
+    type: prometheus  
+    access: proxy
+    url: https://metrics-deployment-monitoring.silverhawk77.click
+    isDefault: false
+    editable: true
+    basicAuth: false
+    jsonData:
+      httpMethod: GET
+      scrapeInterval: 30s
+      queryTimeout: 30s
+      timeInterval: 30s

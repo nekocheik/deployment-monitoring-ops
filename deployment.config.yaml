@@ -57,6 +57,10 @@ deployment:
     build_context: .
     dockerfile: Dockerfile
     container_name_template: '{project}-{branch}-deploy'
+    multi_service:
+      enabled: true
+      compose_file: docker-compose.monitoring.yml
+      strategy: compose
     
   deploy:
     strategy: rolling

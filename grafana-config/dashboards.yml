@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'deployment-monitoring'
+    orgId: 1
+    folder: 'Deployment Monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards

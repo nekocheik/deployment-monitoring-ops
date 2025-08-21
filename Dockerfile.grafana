@@ -1,0 +1,22 @@
+# Dockerfile pour déploiement Grafana réel via pipeline
+FROM grafana/grafana:latest
+
+# Configuration Grafana pour le sous-domaine
+ENV GF_SECURITY_ADMIN_PASSWORD=monitoring2024
+ENV GF_USERS_ALLOW_SIGN_UP=false
+ENV GF_SERVER_ROOT_URL=https://grafana-deployment-monitoring.silverhawk77.click
+ENV GF_SERVER_SERVE_FROM_SUB_PATH=false
+ENV GF_ANALYTICS_REPORTING_ENABLED=false
+ENV GF_ANALYTICS_CHECK_FOR_UPDATES=false
+
+# Configuration des datasources par défaut
+COPY --chown=grafana:grafana grafana-config/datasources.yml /etc/grafana/provisioning/datasources/
+COPY --chown=grafana:grafana grafana-config/dashboards.yml /etc/grafana/provisioning/dashboards/
+COPY --chown=grafana:grafana grafana-config/dashboards/ /etc/grafana/dashboards/
+
+# Exposition du port Grafana
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000/api/health || exit 1
