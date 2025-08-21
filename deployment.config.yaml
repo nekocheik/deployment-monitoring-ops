@@ -12,12 +12,18 @@ deployment:
       subdomain: metrics
       health_check: /health
       description: "Exporteur de métriques pour Prometheus"
-    - name: grafana-proxy
-      port: 3001
+    - name: grafana
+      port: 3000
       exposed: true
       subdomain: grafana
       health_check: /api/health
-      description: "Interface Grafana simulée"
+      description: "Instance Grafana réelle avec dashboards"
+    - name: prometheus
+      port: 9090
+      exposed: true
+      subdomain: prometheus
+      health_check: /-/ready
+      description: "Instance Prometheus pour collecte métriques"
     - name: nginx-reverse-proxy
       port: 80
       exposed: true
@@ -61,6 +67,7 @@ deployment:
       enabled: true
       compose_file: docker-compose.monitoring.yml
       strategy: compose
+      primary_strategy: compose  # Forcer l'utilisation de compose
     
   deploy:
     strategy: rolling
