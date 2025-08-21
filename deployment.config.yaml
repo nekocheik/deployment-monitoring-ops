@@ -85,9 +85,9 @@ deployment:
     metrics_port: 9091
     
 metadata:
-  version: 1.0.1
+  version: 1.0.2
   created_at: '2025-08-21T10:35:00Z'
-  updated_at: '2025-08-21T12:03:00Z'
+  updated_at: '2025-08-21T12:25:00Z'
   created_by: Claude Code
   template_version: monitoring-stack-v1
-  auto_tunnel_config: true  # Trigger auto-configuration test
+  deployment_strategy: compose-generic  # Test generic compose strategy
