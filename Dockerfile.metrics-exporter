@@ -7,17 +7,8 @@ WORKDIR /app
 # Installer les dépendances système
 RUN apk add --no-cache curl
 
-# Créer package.json pour les dépendances
-RUN cat > package.json << 'EOF'
-{
-  "name": "deployment-metrics-exporter",
-  "version": "1.0.0", 
-  "type": "module",
-  "dependencies": {
-    "js-yaml": "^4.1.0"
-  }
-}
-EOF
+# Copier package.json depuis le projet
+COPY package.json ./
 
 # Installer les dépendances Node.js
 RUN npm install
