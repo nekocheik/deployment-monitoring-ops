@@ -11,24 +11,28 @@ deployment:
       exposed: true
       subdomain: metrics
       health_check: /health
+      env_alias: METRICS_PORT
       description: "Exporteur de métriques pour Prometheus"
     - name: grafana
       port: 3000
       exposed: true
       subdomain: grafana
       health_check: /api/health
+      env_alias: GRAFANA_PORT
       description: "Instance Grafana réelle avec dashboards"
     - name: prometheus
       port: 9090
       exposed: true
       subdomain: prometheus
       health_check: /-/ready
+      env_alias: PROMETHEUS_PORT
       description: "Instance Prometheus pour collecte métriques"
     - name: nginx-reverse-proxy
       port: 80
       exposed: true
       subdomain: null  # Service principal
       health_check: /health
+      env_alias: MAIN_PORT
       description: "Reverse proxy principal et dashboard"
       
   ports:
