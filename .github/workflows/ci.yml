@@ -42,8 +42,8 @@ jobs:
         echo "🐳 Validation de la configuration Docker..."
         if [ -f docker-compose.yml ]; then
           echo "✅ docker-compose.yml trouvé"
-          # Test de validation docker-compose
-          docker-compose config > /dev/null && echo "✅ Docker Compose configuration valide"
+          # Test de validation docker-compose avec docker compose (nouvelle syntaxe)
+          docker compose config > /dev/null && echo "✅ Docker Compose configuration valide"
         else
           echo "❌ docker-compose.yml manquant"
           exit 1
@@ -88,8 +88,8 @@ jobs:
     - name: Test monitoring stack startup
       run: |
         echo "🚀 Test de démarrage du stack monitoring..."
-        # Démarrage en mode test (détaché)
-        docker-compose up -d --scale deployment-metrics-exporter=0
+        # Démarrage en mode test (détaché) avec docker compose
+        docker compose up -d --scale deployment-metrics-exporter=0
         
         # Attendre que les services se lancent
         sleep 30
@@ -104,7 +104,7 @@ jobs:
         echo "✅ Grafana démarré"
         
         # Nettoyage
-        docker-compose down
+        docker compose down
 
   deploy:
     runs-on: ubuntu-latest
