@@ -9,7 +9,8 @@ RUN apk add --no-cache supervisor curl nodejs npm \
 RUN mkdir -p /app/metrics-exporter \
              /app/grafana-proxy \
              /var/log/supervisor \
-             /usr/share/nginx/html
+             /usr/share/nginx/html \
+             /etc/supervisor/conf.d
 
 # Configuration Supervisor pour multi-services
 RUN cat > /etc/supervisor/conf.d/supervisord.conf << 'EOF'
