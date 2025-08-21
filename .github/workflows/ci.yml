@@ -4,6 +4,13 @@ on:
   push:
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment to ops infrastructure'
+        required: false
+        default: false
+        type: boolean
 
 env:
   NODE_VERSION: '18'
