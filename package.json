@@ -1,0 +1,38 @@
+{
+  "name": "deployment-monitoring-ops",
+  "version": "1.0.0",
+  "description": "Stack Prometheus + Grafana pour monitoring des services de déploiement automatique",
+  "type": "module",
+  "main": "scripts/deployment-metrics-exporter.js",
+  "scripts": {
+    "start": "node scripts/deployment-metrics-exporter.js",
+    "test": "node -c scripts/deployment-metrics-exporter.js",
+    "docker:build": "docker build -f Dockerfile.metrics-exporter -t deployment-metrics-exporter:latest .",
+    "docker:run": "docker run -p 9091:9091 deployment-metrics-exporter:latest",
+    "stack:up": "docker compose up -d",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f"
+  },
+  "keywords": [
+    "monitoring",
+    "prometheus",
+    "grafana",
+    "deployment",
+    "ops",
+    "devops"
+  ],
+  "author": "Claude Code",
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nekocheik/deployment-monitoring-ops.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nekocheik/deployment-monitoring-ops/issues"
+  },
+  "homepage": "https://github.com/nekocheik/deployment-monitoring-ops#readme"
+}

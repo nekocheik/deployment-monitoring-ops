@@ -54,8 +54,10 @@ jobs:
         echo "📊 Test du script metrics exporter..."
         if [ -f scripts/deployment-metrics-exporter.js ]; then
           echo "✅ Script metrics exporter trouvé"
-          # Vérification de la syntaxe Node.js
-          node -c scripts/deployment-metrics-exporter.js && echo "✅ Script valide"
+          # Installation des dépendances
+          npm install
+          # Vérification de la syntaxe Node.js avec les modules ES
+          npm run test && echo "✅ Script valide"
         else
           echo "❌ Script metrics exporter manquant"
           exit 1
