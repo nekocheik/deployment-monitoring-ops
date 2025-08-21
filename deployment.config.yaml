@@ -1,0 +1,168 @@
+project:
+  name: deployment-monitoring
+  description: Stack Prometheus + Grafana pour monitoring des services de déploiement automatique  
+  repository: nekocheik/deployment-monitoring
+  
+deployment:
+  ports:
+    allocated: null  # Sera rempli automatiquement par port-manager
+    fallback: 3000   # Port de fallback pour Grafana
+    manager:
+      enabled: true
+      url: http://localhost:3005
+      remote_url: http://51.159.99.160:3005
+      
+  environments:
+    main:
+      domain: monitoring.silverhawk77.click
+      ssl: true
+      auto_deploy: true
+      services:
+        - name: grafana
+          hostname: grafana.silverhawk77.click
+          port: 3000
+        - name: prometheus  
+          hostname: prometheus.silverhawk77.click
+          port: 9090
+        - name: alertmanager
+          hostname: alerts.silverhawk77.click
+          port: 9093
+    develop:
+      domain: dev-monitoring.silverhawk77.click
+      ssl: false
+      auto_deploy: false
+    production:
+      domain: monitoring.silverhawk77.click
+      ssl: true
+      auto_deploy: false
+      
+  docker:
+    image_name: deployment-monitoring
+    build_context: .
+    dockerfile: docker-compose.yml
+    container_name_template: 'deployment-monitoring-{service}'
+    services:
+      - grafana
+      - prometheus
+      - alertmanager
+      - loki
+      - promtail
+      - node-exporter
+      - cadvisor
+      - mongodb-exporter
+      - deployment-metrics-exporter
+      
+  deploy:
+    strategy: stack  # Stack de services au lieu de rolling
+    health_check:
+      enabled: true
+      endpoints:
+        - path: /api/health
+          port: 3000
+          service: grafana
+        - path: /api/v1/status/config
+          port: 9090  
+          service: prometheus
+        - path: /api/v1/status
+          port: 9093
+          service: alertmanager
+      timeout: 60
+      retries: 3
+    env_vars:
+      GF_SECURITY_ADMIN_PASSWORD: monitoring2024!
+      PROMETHEUS_RETENTION_TIME: 30d
+      
+  monitoring:
+    enabled: true
+    self_monitoring: true  # Le monitoring se surveille lui-même
+    metrics_endpoints:
+      - service: grafana
+        port: 3000
+        path: /metrics
+      - service: prometheus
+        port: 9090
+        path: /metrics
+      - service: alertmanager
+        port: 9093
+        path: /metrics
+    alerts:
+      enabled: true
+      slack_webhook: ${SLACK_WEBHOOK_URL}
+      email: admin@silverhawk77.click
+      channels:
+        critical: '#alerts-critical'
+        warning: '#monitoring'
+        info: '#deployment'
+        
+  targets:
+    # Services à monitorer (configuration spécialisée)
+    core_services:
+      - name: port-manager
+        url: http://51.159.99.160:3005
+        metrics_path: /metrics
+        health_path: /health
+        scrape_interval: 10s
+      - name: deployment-api
+        url: http://51.159.99.160:3004
+        metrics_path: /metrics
+        health_path: /status
+        scrape_interval: 10s
+      - name: tunnel-manager
+        url: http://51.159.99.160:3001
+        metrics_path: /api/metrics
+        health_path: /api/health
+        scrape_interval: 15s
+        
+    applications:
+      # Range de ports pour applications déployées
+      port_range:
+        start: 8100
+        end: 8999
+        health_path: /health
+        metrics_path: /metrics
+        scrape_interval: 30s
+        
+    infrastructure:
+      - name: node-exporter
+        port: 9100
+        scrape_interval: 15s
+      - name: cadvisor
+        port: 8080  
+        scrape_interval: 15s
+      - name: mongodb
+        port: 9216
+        scrape_interval: 30s
+
+metadata:
+  version: 1.0.0
+  created_at: '2025-08-21T09:45:00Z'
+  updated_at: '2025-08-21T09:45:00Z'
+  created_by: Claude Code
+  template_version: deployment-monitoring-v1
+  
+  # Métriques de déploiement du monitoring lui-même
+  last_deployment:
+    stack_deployed: false
+    services_count: 9
+    expected_tunnels: 3
+    deployment_id: null
+    
+  github_integration:
+    enabled: true
+    workflow_file: .github/workflows/monitoring-deploy.yml
+    secrets_required:
+      - DEPLOYMENT_API_URL
+      - DEPLOYMENT_SECRET
+      - SLACK_WEBHOOK_URL
+      
+  cloudflare_integration:
+    tunnels:
+      - hostname: grafana.silverhawk77.click
+        service: grafana
+        port: 3000
+      - hostname: prometheus.silverhawk77.click
+        service: prometheus  
+        port: 9090
+      - hostname: alerts.silverhawk77.click
+        service: alertmanager
+        port: 9093

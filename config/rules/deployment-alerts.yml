@@ -1,0 +1,265 @@
+groups:
+  # 🚀 Règles d'alerte pour le système de déploiement
+  - name: deployment-system-alerts
+    rules:
+    
+    # 🔌 Port Manager - Service indisponible
+    - alert: PortManagerDown
+      expr: up{job="port-manager"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: port-manager
+      annotations:
+        summary: "Port Manager est indisponible"
+        description: "Le service Port Manager sur le port 3005 ne répond pas depuis {{ $value }} minutes"
+        alert_type: "service_down"
+        runbook_url: "https://github.com/nekocheik/deployment-monitoring/wiki/Port-Manager-Down"
+
+    # 🔌 Port Manager - Utilisation élevée des ports
+    - alert: PortManagerHighUtilization
+      expr: |
+        (
+          (900 - on() port_manager_available_ports) / 900 * 100
+        ) > 80
+      for: 5m
+      labels:
+        severity: warning
+        service: port-manager
+      annotations:
+        summary: "Utilisation élevée des ports ({{ $value }}%)"
+        description: "Plus de 80% des ports sont alloués. Considérez l'expansion de la plage."
+        alert_type: "resource_exhaustion"
+        value: "{{ $value }}%"
+
+    # 🔌 Port Manager - Échecs d'allocation
+    - alert: PortManagerAllocationFailures
+      expr: increase(port_manager_allocation_failures_total[5m]) > 3
+      for: 1m
+      labels:
+        severity: warning
+        service: port-manager
+      annotations:
+        summary: "Échecs répétés d'allocation de ports"
+        description: "{{ $value }} échecs d'allocation dans les 5 dernières minutes"
+        alert_type: "allocation_failure"
+
+    # 🚀 Deployment API - Service indisponible
+    - alert: DeploymentAPIDown
+      expr: up{job="deployment-api"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: deployment-api
+      annotations:
+        summary: "Deployment API est indisponible"
+        description: "Le service Deployment API sur le port 3004 ne répond pas"
+        alert_type: "service_down"
+        runbook_url: "https://github.com/nekocheik/deployment-monitoring/wiki/Deployment-API-Down"
+
+    # 🚀 Deployment API - Échecs de déploiement
+    - alert: DeploymentFailures
+      expr: increase(deployment_failures_total[10m]) > 2
+      for: 1m
+      labels:
+        severity: warning
+        service: deployment-api
+      annotations:
+        summary: "Échecs répétés de déploiement"
+        description: "{{ $value }} déploiements ont échoué dans les 10 dernières minutes"
+        alert_type: "deployment_failure"
+
+    # 🚀 Deployment API - Temps de déploiement élevé
+    - alert: DeploymentHighLatency
+      expr: |
+        histogram_quantile(0.95, 
+          rate(deployment_duration_seconds_bucket[5m])
+        ) > 600
+      for: 2m
+      labels:
+        severity: warning
+        service: deployment-api
+      annotations:
+        summary: "Temps de déploiement élevé"
+        description: "95% des déploiements prennent plus de 10 minutes ({{ $value }}s)"
+        alert_type: "performance_degradation"
+        value: "{{ $value }}s"
+
+    # 🌩️ Tunnel Manager - Service indisponible
+    - alert: TunnelManagerDown
+      expr: up{job="tunnel-manager"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: tunnel-manager
+      annotations:
+        summary: "Tunnel Manager est indisponible"
+        description: "Le service Tunnel Manager sur le port 3001 ne répond pas"
+        alert_type: "service_down"
+        runbook_url: "https://github.com/nekocheik/deployment-monitoring/wiki/Tunnel-Manager-Down"
+
+    # 🌩️ Tunnel Manager - Échecs de configuration Cloudflare
+    - alert: CloudflareConfigurationFailures
+      expr: increase(tunnel_manager_cloudflare_failures_total[5m]) > 2
+      for: 1m
+      labels:
+        severity: warning
+        service: tunnel-manager
+      annotations:
+        summary: "Échecs de configuration Cloudflare"
+        description: "{{ $value }} échecs de configuration Cloudflare dans les 5 dernières minutes"
+        alert_type: "cloudflare_failure"
+
+    # 🗄️ MongoDB - Base de données indisponible
+    - alert: MongoDBDown
+      expr: up{job="mongodb"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: mongodb
+      annotations:
+        summary: "MongoDB est indisponible"
+        description: "La base de données MongoDB ne répond pas"
+        alert_type: "database_down"
+        runbook_url: "https://github.com/nekocheik/deployment-monitoring/wiki/MongoDB-Down"
+
+    # 🗄️ MongoDB - Connexions élevées
+    - alert: MongoDBHighConnections
+      expr: mongodb_connections{state="current"} > 80
+      for: 5m
+      labels:
+        severity: warning
+        service: mongodb
+      annotations:
+        summary: "Nombre élevé de connexions MongoDB"
+        description: "{{ $value }} connexions actives sur MongoDB"
+        alert_type: "resource_exhaustion"
+        value: "{{ $value }}"
+
+  # 🖥️ Règles d'alerte infrastructure
+  - name: infrastructure-alerts
+    rules:
+    
+    # 💾 Espace disque faible
+    - alert: DiskSpaceLow
+      expr: |
+        (
+          node_filesystem_avail_bytes{mountpoint="/"} / 
+          node_filesystem_size_bytes{mountpoint="/"} * 100
+        ) < 10
+      for: 1m
+      labels:
+        severity: critical
+        service: system
+      annotations:
+        summary: "Espace disque critique ({{ $value }}%)"
+        description: "Moins de 10% d'espace disque disponible sur /"
+        alert_type: "disk_space"
+        value: "{{ $value }}%"
+
+    # 🧠 Utilisation mémoire élevée
+    - alert: HighMemoryUsage
+      expr: |
+        (
+          1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+        ) * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        service: system
+      annotations:
+        summary: "Utilisation mémoire élevée ({{ $value }}%)"
+        description: "Plus de 90% de la mémoire est utilisée"
+        alert_type: "memory_usage"
+        value: "{{ $value }}%"
+
+    # ⚡ Charge CPU élevée
+    - alert: HighCPUUsage
+      expr: |
+        (
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+        ) > 80
+      for: 5m
+      labels:
+        severity: warning
+        service: system
+      annotations:
+        summary: "Charge CPU élevée ({{ $value }}%)"
+        description: "Utilisation CPU supérieure à 80% pendant 5 minutes"
+        alert_type: "cpu_usage"
+        value: "{{ $value }}%"
+
+    # 🐳 Container Docker arrêté
+    - alert: ContainerDown
+      expr: |
+        time() - container_last_seen{name=~".*-deploy"} > 60
+      for: 1m
+      labels:
+        severity: warning
+        service_type: deployed-app
+      annotations:
+        summary: "Container {{ $labels.name }} arrêté"
+        description: "Le container {{ $labels.name }} n'est plus visible depuis plus d'une minute"
+        alert_type: "container_down"
+
+    # 🐳 Container avec redémarrages fréquents
+    - alert: ContainerRestartLoop
+      expr: increase(container_spec_restart_policy_always[15m]) > 3
+      for: 1m
+      labels:
+        severity: warning
+        service_type: deployed-app
+      annotations:
+        summary: "Container {{ $labels.name }} redémarre fréquemment"
+        description: "{{ $value }} redémarrages en 15 minutes"
+        alert_type: "restart_loop"
+
+  # 🌐 Règles d'alerte applications
+  - name: application-alerts
+    rules:
+    
+    # 🌐 Application non accessible
+    - alert: ApplicationDown
+      expr: up{job="deployed-apps"} == 0
+      for: 2m
+      labels:
+        severity: warning
+        service_type: deployed-app
+      annotations:
+        summary: "Application sur {{ $labels.instance }} non accessible"
+        description: "L'application ne répond pas aux health checks"
+        alert_type: "application_down"
+        port: "{{ $labels.port }}"
+
+    # 🌐 Temps de réponse élevé
+    - alert: ApplicationHighLatency
+      expr: |
+        histogram_quantile(0.95, 
+          rate(http_request_duration_seconds_bucket{job="deployed-apps"}[5m])
+        ) > 5
+      for: 5m
+      labels:
+        severity: warning
+        service_type: deployed-app
+      annotations:
+        summary: "Temps de réponse élevé pour {{ $labels.instance }}"
+        description: "95% des requêtes prennent plus de 5 secondes"
+        alert_type: "performance_degradation"
+        value: "{{ $value }}s"
+
+    # 🌐 Taux d'erreur élevé
+    - alert: ApplicationHighErrorRate
+      expr: |
+        (
+          sum(rate(http_requests_total{job="deployed-apps",status=~"5.."}[5m])) by (instance) /
+          sum(rate(http_requests_total{job="deployed-apps"}[5m])) by (instance)
+        ) * 100 > 10
+      for: 2m
+      labels:
+        severity: warning
+        service_type: deployed-app
+      annotations:
+        summary: "Taux d'erreur élevé pour {{ $labels.instance }}"
+        description: "{{ $value }}% d'erreurs HTTP 5xx"
+        alert_type: "error_rate"
+        value: "{{ $value }}%"

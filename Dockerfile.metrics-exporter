@@ -1,0 +1,36 @@
+# Dockerfile pour le Deployment Metrics Exporter
+FROM node:18-alpine
+
+# Créer répertoire de travail
+WORKDIR /app
+
+# Installer les dépendances système
+RUN apk add --no-cache curl
+
+# Créer package.json pour les dépendances
+RUN cat > package.json << 'EOF'
+{
+  "name": "deployment-metrics-exporter",
+  "version": "1.0.0", 
+  "type": "module",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
+EOF
+
+# Installer les dépendances Node.js
+RUN npm install
+
+# Copier le script de métriques
+COPY scripts/deployment-metrics-exporter.js ./metrics-exporter.js
+
+# Exposer le port
+EXPOSE 9091
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:9091/health || exit 1
+
+# Démarrer l'exporter
+CMD ["node", "metrics-exporter.js"]

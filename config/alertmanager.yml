@@ -1,0 +1,170 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'monitoring@silverhawk77.click'
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+# 📋 Templates pour les notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# 🔄 Route des alertes
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'deployment-team'
+  routes:
+  # Alertes critiques - notification immédiate
+  - match:
+      severity: critical
+    receiver: 'critical-alerts'
+    group_wait: 10s
+    repeat_interval: 30m
+    
+  # Alertes de déploiement
+  - match:
+      service: deployment-api
+    receiver: 'deployment-alerts'
+    group_interval: 5m
+    
+  # Alertes infrastructure
+  - match_re:
+      service: port-manager|tunnel-manager|mongodb
+    receiver: 'infrastructure-alerts'
+    
+  # Alertes applications
+  - match:
+      service_type: deployed-app
+    receiver: 'application-alerts'
+
+# 📬 Récepteurs de notifications
+receivers:
+# Équipe de déploiement par défaut
+- name: 'deployment-team'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#deployment-monitoring'
+    title: '🔔 Alerte Déploiement'
+    text: |
+      *Alerte:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+      *Sévérité:* {{ .GroupLabels.severity }}
+      *Service:* {{ .GroupLabels.service }}
+      *Instance:* {{ .GroupLabels.instance }}
+      
+      {{ range .Alerts }}
+      *Description:* {{ .Annotations.description }}
+      *Liens:* [Grafana Dashboard](https://grafana.silverhawk77.click) | [Prometheus](https://prometheus.silverhawk77.click)
+      {{ end }}
+    send_resolved: true
+
+# Alertes critiques
+- name: 'critical-alerts'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#alerts-critical'
+    title: '🚨 ALERTE CRITIQUE - Action Immédiate Requise'
+    text: |
+      🚨 *ALERTE CRITIQUE* 🚨
+      
+      *Service:* {{ .GroupLabels.service }}
+      *Instance:* {{ .GroupLabels.instance }}
+      
+      {{ range .Alerts }}
+      *Problème:* {{ .Annotations.summary }}
+      *Détails:* {{ .Annotations.description }}
+      *Valeur:* {{ .Annotations.value }}
+      {{ end }}
+      
+      *Actions suggérées:*
+      - Vérifier l'état du service
+      - Consulter les logs détaillés
+      - Escalader si nécessaire
+      
+      *Liens utiles:*
+      [🔍 Grafana](https://grafana.silverhawk77.click) | [📊 Prometheus](https://prometheus.silverhawk77.click) | [🔔 Alertmanager](https://alerts.silverhawk77.click)
+    send_resolved: true
+    
+  # Email pour alertes critiques
+  email_configs:
+  - to: 'admin@silverhawk77.click'
+    subject: '🚨 ALERTE CRITIQUE - {{ .GroupLabels.service }}'
+    body: |
+      Service en panne critique détecté:
+      
+      Service: {{ .GroupLabels.service }}
+      Instance: {{ .GroupLabels.instance }}
+      
+      {{ range .Alerts }}
+      Problème: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Heure: {{ .StartsAt }}
+      {{ end }}
+      
+      Vérifiez immédiatement l'infrastructure.
+
+# Alertes de déploiement
+- name: 'deployment-alerts'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#deployments'
+    title: '🚀 Alerte Déploiement'
+    text: |
+      *Statut Déploiement:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+      
+      {{ range .Alerts }}
+      *Service:* {{ .Labels.service }}
+      *Type:* {{ .Annotations.alert_type }}
+      *Détails:* {{ .Annotations.description }}
+      {{ if .Annotations.deployment_id }}*ID Déploiement:* {{ .Annotations.deployment_id }}{{ end }}
+      {{ if .Annotations.project }}*Projet:* {{ .Annotations.project }}{{ end }}
+      {{ if .Annotations.branch }}*Branche:* {{ .Annotations.branch }}{{ end }}
+      {{ end }}
+
+# Alertes infrastructure
+- name: 'infrastructure-alerts'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#infrastructure'
+    title: '🏗️ Alerte Infrastructure'
+    text: |
+      *Infrastructure:* {{ .GroupLabels.service }}
+      
+      {{ range .Alerts }}
+      *Problème:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      {{ if .Annotations.value }}*Valeur actuelle:* {{ .Annotations.value }}{{ end }}
+      {{ end }}
+
+# Alertes applications déployées
+- name: 'application-alerts'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#applications'
+    title: '🌐 Alerte Application'
+    text: |
+      *Application:* {{ .GroupLabels.instance }}
+      
+      {{ range .Alerts }}
+      *Statut:* {{ .Annotations.summary }}
+      *Détails:* {{ .Annotations.description }}
+      {{ if .Annotations.url }}*URL:* {{ .Annotations.url }}{{ end }}
+      {{ if .Annotations.port }}*Port:* {{ .Annotations.port }}{{ end }}
+      {{ end }}
+
+# Configuration d'inhibition des alertes
+inhibit_rules:
+# Inhiber les alertes warning si critical est active
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['alertname', 'service', 'instance']
+
+# Inhiber les alertes d'application si le service de déploiement est down
+- source_match:
+    service: 'deployment-api'
+    severity: 'critical'
+  target_match:
+    service_type: 'deployed-app'
+  equal: ['instance']

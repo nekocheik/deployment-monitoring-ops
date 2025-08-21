@@ -1,0 +1,783 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": "Loki",
+        "enable": true,
+        "expr": "{job=\"deployment-api\"} |= \"GitHub Actions\"",
+        "iconColor": "green",
+        "name": "Déploiements GitHub Actions",
+        "titleFormat": "Déploiement: {{deployment_id}}"
+      }
+    ]
+  },
+  "description": "Dashboard spécialisé pour le monitoring des déploiements GitHub Actions basés sur la structure starter-frontend",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "🔗 Deployment API",
+      "tooltip": "Accès direct à l'API de déploiement",
+      "type": "link",
+      "url": "https://deployment-api.silverhawk77.click/status"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "🔌 Port Manager",
+      "tooltip": "Gestionnaire des ports",
+      "type": "link",
+      "url": "https://port-manager.silverhawk77.click/status"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "description": "Vue d'ensemble en temps réel des déploiements GitHub Actions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "❌ Aucun"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "✅ Actif"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "displayMode": "list",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "expr": "deployment_in_progress",
+          "legendFormat": "🚀 Déploiement en cours",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(github_actions_workflows_total[5m]) * 300",
+          "legendFormat": "⚡ Workflows/5min",
+          "refId": "B"
+        },
+        {
+          "expr": "github_actions_success_rate",
+          "legendFormat": "📊 Taux succès (%)",
+          "refId": "C"
+        },
+        {
+          "expr": "applications_active",
+          "legendFormat": "🌐 Apps actives",
+          "refId": "D"
+        }
+      ],
+      "title": "📊 GitHub Actions - Vue d'Ensemble",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Historique des déploiements avec succès/échecs",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "✅ Déploiements réussis"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "❌ Déploiements échoués"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(deployment_success_total[5m])",
+          "legendFormat": "✅ Déploiements réussis",
+          "refId": "A"
+        },
+        {
+          "expr": "increase(deployment_failed_total[5m])",
+          "legendFormat": "❌ Déploiements échoués",
+          "refId": "B"
+        },
+        {
+          "expr": "increase(deployment_total[5m])",
+          "legendFormat": "📈 Total déploiements",
+          "refId": "C"
+        }
+      ],
+      "title": "🚀 Historique des Déploiements (5min)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Taux de succès des pipelines GitHub Actions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 3,
+            "pointSize": 8,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 80
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 95
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "min",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "github_actions_success_rate",
+          "legendFormat": "📊 Taux de succès CI/CD",
+          "refId": "A"
+        }
+      ],
+      "title": "📊 Taux de Succès GitHub Actions",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Applications starter-frontend déployées et leur statut",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "✅ Healthy"
+                },
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "❌ Down"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "URL"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": true,
+                    "title": "Ouvrir l'application",
+                    "url": "https://${__data.fields.URL}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 4,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Port"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.0",
+      "targets": [
+        {
+          "expr": "up{job=\"deployed-apps-starter-frontend\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "🌐 Applications Starter-Frontend Déployées",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "__name__": true,
+              "job": true,
+              "Time": true,
+              "instance": true
+            },
+            "indexByName": {
+              "port": 0,
+              "project_template": 1,
+              "framework": 2,
+              "Value": 3
+            },
+            "renameByName": {
+              "port": "Port",
+              "project_template": "Template",
+              "framework": "Framework",
+              "Value": "Status"
+            }
+          }
+        },
+        {
+          "id": "fieldLookup",
+          "options": {
+            "lookupField": "Port",
+            "result": {
+              "8101": "hotfix-test-all-branches-starter-frontend4.silverhawk77.click",
+              "8102": "dev-starter-frontend4.silverhawk77.click",
+              "8103": "staging-starter-frontend4.silverhawk77.click"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": "Loki",
+      "description": "Logs en temps réel des déploiements GitHub Actions",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "expr": "{job=\"deployment-api\"} |= \"GitHub Actions\" or {job=\"deployment-api\"} |= \"webhook\" or {job=\"deployment-api\"} |= \"déploiement\"",
+          "refId": "A"
+        },
+        {
+          "expr": "{job=\"github-actions\"} | json",
+          "refId": "B"
+        }
+      ],
+      "title": "📝 Logs GitHub Actions & Déploiements",
+      "type": "logs"
+    },
+    {
+      "datasource": "Prometheus",
+      "description": "Métriques détaillées du Port Manager intégrées aux déploiements",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "port_manager_ports_allocated",
+          "legendFormat": "🔌 Ports alloués",
+          "refId": "A"
+        },
+        {
+          "expr": "port_manager_ports_available",
+          "legendFormat": "⚪ Ports disponibles",
+          "refId": "B"
+        },
+        {
+          "expr": "starter_frontend_applications",
+          "legendFormat": "🎯 Apps starter-frontend",
+          "refId": "C"
+        }
+      ],
+      "title": "🔌 Port Manager - Applications Starter-Frontend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus", 
+      "description": "Analyse des frameworks et templates utilisés",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "expr": "vite_react_applications",
+          "legendFormat": "⚛️ Vite + React",
+          "refId": "A"
+        },
+        {
+          "expr": "starter_frontend_applications",
+          "legendFormat": "🎯 Starter Frontend",
+          "refId": "B"
+        }
+      ],
+      "title": "📊 Technologies Utilisées",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "deployment",
+    "github-actions",
+    "starter-frontend",
+    "ci-cd"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "Prometheus",
+        "definition": "label_values(up{job=~\"deployed-apps.*\"}, port)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Port",
+        "multi": true,
+        "name": "port",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"deployed-apps.*\"}, port)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": "Prometheus",
+        "definition": "label_values(up{job=~\"deployed-apps.*\"}, project_template)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Template",
+        "multi": true,
+        "name": "template",
+        "options": [],
+        "query": {
+          "query": "label_values(up{job=~\"deployed-apps.*\"}, project_template)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-2h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "Europe/Paris",
+  "title": "🚀 GitHub Actions & Starter-Frontend Deployments",
+  "uid": "github-actions-deployments",
+  "version": 1,
+  "weekStart": ""
+}

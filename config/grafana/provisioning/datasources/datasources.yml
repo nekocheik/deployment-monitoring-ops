@@ -1,0 +1,62 @@
+apiVersion: 1
+
+# 📊 Configuration des sources de données Grafana
+datasources:
+  # Prometheus - Source principale des métriques
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0
+      cacheLevel: 'High'
+      disableRecordingRules: false
+      incrementalQuerying: false
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: loki
+    secureJsonData: {}
+
+  # Loki - Source des logs
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: prometheus
+          matcherRegex: "deployment_id=(\\w+)"
+          name: deployment_id
+          url: "/d/deployment-overview/deployment-overview?var-deployment_id=$${__value.raw}"
+        - datasourceUid: prometheus
+          matcherRegex: "service=(\\w+-\\w+)"
+          name: service
+          url: "/d/services-overview/services-overview?var-service=$${__value.raw}"
+    secureJsonData: {}
+
+  # MongoDB - Via prometheus avec mongodb_exporter
+  - name: MongoDB
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    editable: true
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations: []
+    secureJsonData: {}
+
+  # TestData DB - Pour les tests et développement
+  - name: TestData DB
+    type: testdata
+    access: proxy
+    isDefault: false
+    editable: false

@@ -1,0 +1,218 @@
+name: CI/CD Pipeline - Monitoring Stack
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '18'
+  DEPLOYMENT_API_URL: 'http://51.159.99.160:3004'
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    
+    - name: Validate deployment config
+      run: |
+        echo "🔍 Validation de deployment.config.yaml..."
+        if [ -f deployment.config.yaml ]; then
+          echo "✅ deployment.config.yaml trouvé"
+          # Vérifier la structure YAML
+          python3 -c "import yaml; yaml.safe_load(open('deployment.config.yaml'))" && echo "✅ YAML valide"
+        else
+          echo "❌ deployment.config.yaml manquant"
+          exit 1
+        fi
+
+    - name: Validate Docker configuration
+      run: |
+        echo "🐳 Validation de la configuration Docker..."
+        if [ -f docker-compose.yml ]; then
+          echo "✅ docker-compose.yml trouvé"
+          # Test de validation docker-compose
+          docker-compose config > /dev/null && echo "✅ Docker Compose configuration valide"
+        else
+          echo "❌ docker-compose.yml manquant"
+          exit 1
+        fi
+
+    - name: Test metrics exporter script
+      run: |
+        echo "📊 Test du script metrics exporter..."
+        if [ -f scripts/deployment-metrics-exporter.js ]; then
+          echo "✅ Script metrics exporter trouvé"
+          # Vérification de la syntaxe Node.js
+          node -c scripts/deployment-metrics-exporter.js && echo "✅ Script valide"
+        else
+          echo "❌ Script metrics exporter manquant"
+          exit 1
+        fi
+
+    - name: Test Prometheus configuration
+      run: |
+        echo "📈 Test de la configuration Prometheus..."
+        if [ -f config/prometheus.yml ]; then
+          echo "✅ Configuration Prometheus trouvée"
+          # Validation de la syntaxe YAML Prometheus
+          python3 -c "import yaml; yaml.safe_load(open('config/prometheus.yml'))" && echo "✅ Configuration Prometheus valide"
+        else
+          echo "❌ Configuration Prometheus manquante"
+          exit 1
+        fi
+
+  docker-test:
+    runs-on: ubuntu-latest
+    needs: test-and-validate
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test metrics exporter Docker build
+      run: |
+        echo "🏗️ Test de build de l'image metrics exporter..."
+        docker build -f Dockerfile.metrics-exporter -t test-metrics-exporter .
+        echo "✅ Build réussi"
+
+    - name: Test monitoring stack startup
+      run: |
+        echo "🚀 Test de démarrage du stack monitoring..."
+        # Démarrage en mode test (détaché)
+        docker-compose up -d --scale deployment-metrics-exporter=0
+        
+        # Attendre que les services se lancent
+        sleep 30
+        
+        # Vérification des services
+        echo "📊 Vérification de Prometheus..."
+        curl -f http://localhost:9090/-/healthy || exit 1
+        echo "✅ Prometheus démarré"
+        
+        echo "📈 Vérification de Grafana..."
+        curl -f http://localhost:3000/api/health || exit 1
+        echo "✅ Grafana démarré"
+        
+        # Nettoyage
+        docker-compose down
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test-and-validate, docker-test]
+    if: github.event_name == 'push'
+    steps:
+    - name: Extract branch name
+      shell: bash
+      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+      id: extract_branch
+
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Déploiement du monitoring stack..."
+        
+        # Préparation du payload pour l'API de déploiement
+        PAYLOAD='{
+          "repository": {
+            "full_name": "${{ github.repository }}",
+            "clone_url": "${{ github.event.repository.clone_url }}"
+          },
+          "head_commit": {
+            "id": "${{ github.sha }}",
+            "message": "${{ github.event.head_commit.message }}"
+          },
+          "ref": "${{ github.ref }}"
+        }'
+        
+        echo "📝 Payload de déploiement préparé"
+        
+        # Signature du payload
+        SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "${{ secrets.DEPLOYMENT_SECRET }}" | awk '{print $2}')
+        
+        echo "🔐 Signature générée"
+        
+        # Envoi de la requête de déploiement
+        DEPLOY_RESPONSE=$(curl -s -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-Signature-256: sha256=$SIGNATURE" \
+          -d "$PAYLOAD" \
+          "${{ env.DEPLOYMENT_API_URL }}/deploy")
+        
+        echo "📡 Réponse de déploiement: $DEPLOY_RESPONSE"
+
+    - name: Monitor deployment status
+      run: |
+        echo "👀 Surveillance du statut de déploiement..."
+        
+        # Attendre et surveiller le déploiement
+        for i in {1..30}; do
+          echo "🔄 Vérification $i/30..."
+          
+          STATUS_RESPONSE=$(curl -s "${{ env.DEPLOYMENT_API_URL }}/status" || echo '{"status":"error"}')
+          echo "📊 Status: $STATUS_RESPONSE"
+          
+          STATUS=$(echo "$STATUS_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', 'unknown'))")
+          
+          if [ "$STATUS" = "deployed" ]; then
+            echo "🎉 Déploiement terminé avec succès!"
+            
+            # Récupération de l'URL Cloudflare
+            CLOUDFLARE_URL=$(echo "$STATUS_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('cloudflareUrl', 'N/A'))")
+            echo "🌐 URL Cloudflare: $CLOUDFLARE_URL"
+            
+            # Test de santé du monitoring déployé
+            if [ "$CLOUDFLARE_URL" != "N/A" ]; then
+              echo "🏥 Test de santé du monitoring déployé..."
+              # Attendre un peu plus pour que les services se stabilisent
+              sleep 60
+              
+              # Tester l'accès à Grafana via Cloudflare
+              GRAFANA_URL=$(echo "$CLOUDFLARE_URL" | sed 's|monitoring|grafana|')
+              if curl -f -s --connect-timeout 30 "$GRAFANA_URL/api/health" > /dev/null; then
+                echo "✅ Grafana accessible via Cloudflare"
+              else
+                echo "⚠️  Grafana non accessible via Cloudflare (peut être normal, tunnels en cours de configuration)"
+              fi
+            fi
+            break
+          elif [ "$STATUS" = "failed" ]; then
+            echo "❌ Déploiement échoué"
+            exit 1
+          else
+            echo "⏳ Statut actuel: $STATUS - Attente..."
+            sleep 10
+          fi
+        done
+        
+        if [ "$STATUS" != "deployed" ]; then
+          echo "⏰ Timeout du déploiement après 5 minutes"
+          # Afficher les logs pour le debug
+          curl -s "${{ env.DEPLOYMENT_API_URL }}/logs" | python3 -c "import sys, json; logs=json.load(sys.stdin).get('logs', []); [print(f\"📝 {log.get('timestamp', '')}: {log.get('message', '')}\") for log in logs[-10:]]"
+          exit 1
+        fi
+
+    - name: Post-deployment validation
+      run: |
+        echo "✅ Validation post-déploiement..."
+        
+        # Récupérer les informations de déploiement
+        STATUS_RESPONSE=$(curl -s "${{ env.DEPLOYMENT_API_URL }}/status")
+        CLOUDFLARE_URL=$(echo "$STATUS_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('cloudflareUrl', 'N/A'))")
+        PORT=$(echo "$STATUS_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('url', 'http://localhost:8080').split(':')[-1])")
+        
+        echo "🌐 URL de déploiement: $CLOUDFLARE_URL"
+        echo "🔌 Port local: $PORT"
+        
+        # Test des endpoints du monitoring
+        echo "🧪 Test des endpoints du monitoring..."
+        
+        # Test direct sur IP
+        if curl -f -s --connect-timeout 10 "http://51.159.99.160:$PORT/health" > /dev/null; then
+          echo "✅ Monitoring stack accessible sur IP:$PORT"
+        else
+          echo "⚠️  Monitoring stack non accessible directement"
+        fi
+        
+        echo "🎯 Déploiement du monitoring stack terminé avec succès!"

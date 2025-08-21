@@ -1,0 +1,171 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'deployment-monitoring'
+    environment: 'production'
+
+# 🔔 Configuration des règles d'alerte
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# 🔔 Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# 📊 Configuration des targets à monitorer
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # 🔌 Port Manager (3005)
+  - job_name: 'port-manager'
+    static_configs:
+      - targets: ['host.docker.internal:3005']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'port-manager'
+      - target_label: service
+        replacement: 'port-manager'
+
+  # 🚀 Deployment API (3004)
+  - job_name: 'deployment-api'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-api'
+      - target_label: service
+        replacement: 'deployment-api'
+
+  # 🌩️ Tunnel Manager (3001)
+  - job_name: 'tunnel-manager'
+    static_configs:
+      - targets: ['host.docker.internal:3001']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'tunnel-manager'
+      - target_label: service
+        replacement: 'tunnel-manager'
+
+  # 📊 Node Exporter - Métriques système
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-server'
+
+  # 🐳 cAdvisor - Métriques containers
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-server'
+
+  # 🗄️ MongoDB Exporter
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mongodb-tunnel-manager'
+
+  # 📝 Loki pour les logs
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    scrape_interval: 15s
+
+  # 🔔 Alertmanager
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 15s
+
+  # 📈 Grafana
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 15s
+
+  # 🎯 Applications déployées - Discovery dynamique
+  - job_name: 'deployed-apps'
+    static_configs:
+      - targets: 
+        # Ces targets seront découverts dynamiquement via service discovery
+        - 'host.docker.internal:8100'
+        - 'host.docker.internal:8101'
+        - 'host.docker.internal:8102'
+        - 'host.docker.internal:8103'
+        - 'host.docker.internal:8104'
+        - 'host.docker.internal:8105'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '.*:(\d+)'
+        target_label: port
+        replacement: '${1}'
+      - target_label: service_type
+        replacement: 'deployed-app'
+    # Honor des labels des applications
+    honor_labels: true
+    
+  # 📊 Deployment Metrics Exporter - Métriques spécialisées
+  - job_name: 'deployment-metrics-exporter'
+    static_configs:
+      - targets: ['deployment-metrics-exporter:9091']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scrape_timeout: 25s
+    relabel_configs:
+      - target_label: service
+        replacement: 'deployment-metrics'
+      - target_label: component
+        replacement: 'specialized-exporter'
+    honor_labels: true
+
+  # 🔄 GitHub Actions - Via webhook metrics (si disponible)
+  - job_name: 'github-actions-webhook'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 60s
+    metrics_path: /github-metrics
+    scrape_timeout: 30s
+    relabel_configs:
+      - target_label: service
+        replacement: 'github-actions'

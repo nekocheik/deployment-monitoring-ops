@@ -1,0 +1,229 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'deployment-monitoring'
+    environment: 'production'
+
+# 🔔 Configuration des règles d'alerte basées sur les déploiements réels
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+# 🔔 Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# 📊 Configuration des targets basée sur la structure starter-frontend
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+
+  # 🔌 Port Manager (3005) - Métriques étendues pour deployment.config.yaml
+  - job_name: 'port-manager'
+    static_configs:
+      - targets: ['host.docker.internal:3005']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'port-manager'
+      - target_label: service
+        replacement: 'port-manager'
+      - target_label: component
+        replacement: 'core-service'
+
+  # 🚀 Deployment API (3004) - Monitoring des déploiements GitHub Actions
+  - job_name: 'deployment-api'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-api'
+      - target_label: service
+        replacement: 'deployment-api'
+      - target_label: component
+        replacement: 'core-service'
+
+  # 🚀 Deployment API - Status endpoint pour métriques GitHub Actions
+  - job_name: 'github-actions-metrics'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 30s
+    metrics_path: /github-actions-metrics
+    honor_labels: true
+    relabel_configs:
+      - target_label: service
+        replacement: 'github-actions'
+      - target_label: component
+        replacement: 'ci-cd'
+
+  # 🌩️ Tunnel Manager (3001) - Métriques Cloudflare
+  - job_name: 'tunnel-manager'
+    static_configs:
+      - targets: ['host.docker.internal:3001']
+    scrape_interval: 10s
+    metrics_path: /api/metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'tunnel-manager'
+      - target_label: service
+        replacement: 'tunnel-manager'
+      - target_label: component
+        replacement: 'core-service'
+
+  # 📊 Node Exporter - Métriques système
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-server'
+      - target_label: component
+        replacement: 'infrastructure'
+
+  # 🐳 cAdvisor - Métriques containers avec labels spéciaux
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'deployment-server'
+      - target_label: component
+        replacement: 'container-runtime'
+    metric_relabel_configs:
+      # Ajouter des labels pour containers de déploiement
+      - source_labels: [name]
+        regex: '^(.+)-deploy$'
+        target_label: deployment_app
+        replacement: '${1}'
+      - source_labels: [name]
+        regex: '^(.+)-(.+)-deploy$'  
+        target_label: deployment_branch
+        replacement: '${1}'
+      - source_labels: [name]
+        regex: '^(.+)-(.+)-deploy$'
+        target_label: deployment_project
+        replacement: '${2}'
+
+  # 🗄️ MongoDB Exporter
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+    scrape_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'mongodb-tunnel-manager'
+      - target_label: component
+        replacement: 'database'
+
+  # 🎯 Applications déployées - Discovery basé sur starter-frontend pattern
+  - job_name: 'deployed-apps-starter-frontend'
+    static_configs:
+      # starter-frontend4 sur différentes branches
+      - targets: 
+        - 'host.docker.internal:8101'  # main branch
+        - 'host.docker.internal:8102'  # develop branch
+        - 'host.docker.internal:8103'  # hotfix branches
+        - 'host.docker.internal:8104'
+        - 'host.docker.internal:8105'
+    scrape_interval: 30s
+    metrics_path: /health
+    scrape_timeout: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: 'host.docker.internal:(\d+)'
+        target_label: port
+        replacement: '${1}'
+      - target_label: service_type
+        replacement: 'react-app'
+      - target_label: framework
+        replacement: 'vite-react'
+      - target_label: project_template
+        replacement: 'starter-frontend'
+    # Métriques custom pour applications React
+    params:
+      format: ['prometheus']
+      
+  # 🎯 Applications déployées - Range complète 8100-8199
+  - job_name: 'deployed-apps-range'  
+    static_configs:
+      - targets: ['host.docker.internal:8100']
+        labels:
+          port: '8100'
+      - targets: ['host.docker.internal:8101'] 
+        labels:
+          port: '8101'
+          project: 'starter-frontend4'
+      - targets: ['host.docker.internal:8102']
+        labels:
+          port: '8102'
+      - targets: ['host.docker.internal:8103']
+        labels:
+          port: '8103'
+          project: 'starter-frontend4'
+          branch: 'hotfix-test-all-branches'
+    scrape_interval: 30s
+    metrics_path: /health
+    honor_labels: true
+    relabel_configs:
+      - target_label: service_type  
+        replacement: 'deployed-app'
+      - target_label: deployment_method
+        replacement: 'github-actions'
+
+  # 🔄 GitHub Webhooks - Métriques des webhook reçus
+  - job_name: 'github-webhooks'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 60s
+    metrics_path: /webhook-metrics
+    relabel_configs:
+      - target_label: service
+        replacement: 'github-webhooks'
+      - target_label: component
+        replacement: 'ci-cd-integration'
+
+  # 🎭 Docker Registry - Si utilisé localement
+  - job_name: 'docker-registry'
+    static_configs:
+      - targets: ['host.docker.internal:5000']
+    scrape_interval: 60s
+    metrics_path: /metrics
+    scrape_timeout: 30s
+    relabel_configs:
+      - target_label: service
+        replacement: 'docker-registry'
+      - target_label: component  
+        replacement: 'container-storage'
+
+# 📊 Configuration spécialisée pour métriques de déploiement
+  - job_name: 'deployment-workflow-metrics'
+    static_configs:
+      - targets: ['host.docker.internal:3004']
+    scrape_interval: 45s
+    metrics_path: /deployment-workflow-metrics
+    params:
+      include_github_actions: ['true']
+      include_deployment_config: ['true']  
+    relabel_configs:
+      - target_label: service
+        replacement: 'deployment-workflow'
+      - target_label: component
+        replacement: 'github-actions-integration'
+    honor_labels: true
