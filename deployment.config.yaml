@@ -4,6 +4,27 @@ project:
   repository: nekocheik/deployment-monitoring-ops
   
 deployment:
+  # Configuration multi-services
+  services:
+    - name: metrics-exporter
+      port: 9091
+      exposed: true
+      subdomain: metrics
+      health_check: /health
+      description: "Exporteur de métriques pour Prometheus"
+    - name: grafana-proxy
+      port: 3001
+      exposed: true
+      subdomain: grafana
+      health_check: /api/health
+      description: "Interface Grafana simulée"
+    - name: nginx-reverse-proxy
+      port: 80
+      exposed: true
+      subdomain: null  # Service principal
+      health_check: /health
+      description: "Reverse proxy principal et dashboard"
+      
   ports:
     allocated: null  # Sera alloué automatiquement par port-manager
     fallback: 3000
@@ -11,6 +32,7 @@ deployment:
       enabled: true
       url: http://localhost:3005
       remote_url: http://51.159.99.160:3005
+      multi_service_support: true
       
   environments:
     main:
