@@ -26,7 +26,7 @@ deployment:
       description: "Reverse proxy principal et dashboard"
       
   ports:
-    allocated: null  # Sera alloué automatiquement par port-manager
+    allocated: 8108  # Port fixe pour correspondre au tunnel Cloudflare
     fallback: 3000
     manager:
       enabled: true
